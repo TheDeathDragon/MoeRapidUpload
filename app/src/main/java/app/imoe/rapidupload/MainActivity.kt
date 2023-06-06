@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -49,8 +50,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,10 +91,18 @@ fun saveToBaidu(context: Context, input: String, snackbarHostState: SnackbarHost
     // &slice-md5=abdf6bfb01f3d3a5011239503b3c8360
     // &content-length=3637
     // &path=%2F%E6%88%91%E7%9A%84%E8%B5%84%E6%BA%90%2FH%202023.5.H
-    if (input.isEmpty()) {
+    val isInputError: Boolean = if (input.isEmpty()) {
+        true
+    } else if (input.contains("#")) {
+        input.split("#").size != 4
+    } else {
+        true
+    }
+
+    if (isInputError) {
         GlobalScope.launch(Dispatchers.Main) {
             snackbarHostState.showSnackbar(
-                message = "输入不能为空",
+                message = "秒传格式错误，请使用四段式秒传链接",
                 actionLabel = "CheckUpdateAction",
                 duration = SnackbarDuration.Short,
                 withDismissAction = true
@@ -126,6 +138,7 @@ fun saveToBaidu(context: Context, input: String, snackbarHostState: SnackbarHost
     // 启动Intent，打开外部浏览器
     startActivity(context, intent, null)
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,7 +199,9 @@ fun MyApp(snackBarHostState: SnackbarHostState) {
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class, ExperimentalComposeUiApi::class
+)
 @Composable
 fun InputAndButton(snackBarHostState: SnackbarHostState) {
     val context = LocalContext.current
@@ -194,6 +209,7 @@ fun InputAndButton(snackBarHostState: SnackbarHostState) {
     val modifier = Modifier
         .padding(16.dp)
         .fillMaxWidth(1f)
+    val keyboardController = LocalSoftwareKeyboardController.current
     Column(
         modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -201,12 +217,18 @@ fun InputAndButton(snackBarHostState: SnackbarHostState) {
             value = textValue,
             onValueChange = { newValue -> textValue = newValue },
             label = { Text("请粘贴秒传链接") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text, imeAction = ImeAction.Done
+            ),
             modifier = modifier,
-            maxLines = 8
+            maxLines = 8,
+            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() })
         )
         OutlinedButton(
-            onClick = { saveToBaidu(context, textValue, snackBarHostState) },
+            onClick = {
+                keyboardController?.hide()
+                saveToBaidu(context, textValue, snackBarHostState)
+            },
             modifier = Modifier
                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                 .fillMaxWidth(1f),
@@ -215,6 +237,7 @@ fun InputAndButton(snackBarHostState: SnackbarHostState) {
         }
         OutlinedButton(
             onClick = {
+                keyboardController?.hide()
                 GlobalScope.launch(Dispatchers.Main) {
                     snackBarHostState.showSnackbar(
                         message = "就写了一个小时，没写好，别点了",
@@ -231,7 +254,10 @@ fun InputAndButton(snackBarHostState: SnackbarHostState) {
             Text("批量转存")
         }
         OutlinedButton(
-            onClick = { textValue = "" },
+            onClick = {
+                keyboardController?.hide()
+                textValue = ""
+            },
             modifier = Modifier
                 .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                 .fillMaxWidth(1f),
@@ -260,9 +286,7 @@ fun IntroducingBox() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "秒传其实就是调用了百度官方的接口，我们只要提供相应的参数即可。\n\n" +
-                        "查看打开的页面，如果显示的是ctime不是error什么的应该就成功保存了。\n\n" +
-                        "路径为：/秒传/资源名称",
+                text = "秒传其实就是调用了百度官方的接口，我们只要提供相应的参数即可。\n\n" + "查看打开的页面，如果显示的是ctime不是error什么的应该就成功保存了。\n\n" + "路径为：/秒传/资源名称",
                 style = textFont
             )
         }
@@ -336,7 +360,7 @@ fun AboutDialog(isShowDialog: MutableState<Boolean>) {
                     .padding(bottom = 8.dp)
             ) {
                 Text(text = "作者: RinShiro")
-                Text(text = "版本号: 1.0.0")
+                Text(text = "版本号: 1.0.1")
             }
         }, confirmButton = {
             OutlinedButton(onClick = {

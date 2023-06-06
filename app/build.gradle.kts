@@ -11,8 +11,8 @@ android {
         applicationId = "app.imoe.rapidupload"
         minSdk = 25
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 101
+        versionName = "1.0.1"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -59,3 +59,4 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
 }
+
